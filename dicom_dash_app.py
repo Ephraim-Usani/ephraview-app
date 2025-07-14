@@ -11,6 +11,7 @@ from tensorflow.keras.models import load_model
 from tensorflow.image import resize
 import tensorflow.keras.backend as K
 import cv2
+import os
 
 from keras.saving import register_keras_serializable
 
@@ -24,9 +25,9 @@ def dice_loss(y_true, y_pred):
     return 1 - score
 
 # Model paths
-HEART_MODEL_PATH = r"C:\Users\ROCKLAND\Desktop\Ephraim Files\CTR_UNet_FineTuned.keras"
-LUNGS_MODEL_PATH = r"C:\Users\ROCKLAND\Desktop\Ephraim Files\CTR_UNet_Luuuungs_precision.keras"
-
+MODEL_DIR = "models"
+LUNGS_MODEL_PATH = os.path.join(MODEL_DIR, "CTR_UNet_Luuuungs_precision.keras")
+HEART_MODEL_PATH = os.path.join(MODEL_DIR, "CTR_UNet_FineTuned.keras")
 # Lazy load models
 lung_model = None
 heart_model = None
