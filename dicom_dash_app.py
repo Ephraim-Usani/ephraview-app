@@ -244,6 +244,6 @@ def measure_distance(relayoutData):
         measurement_list.append(f"{dist:.2f} mm")
 
     return " | ".join(measurement_list)
-
+server = app.server  # Expose for Gunicorn
 if __name__ == '__main__':
     app.run(debug=False)
