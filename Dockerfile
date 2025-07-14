@@ -1,29 +1,30 @@
-# Use official Python 3.10 image
+# Use official Python base image
 FROM python:3.10-slim
 
-# Set working directory
-WORKDIR /app
-
-# Install system dependencies
+# Install system dependencies needed for OpenCV and other libraries
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
     git \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy project files
+# Set the working directory
+WORKDIR /app
+
+# Copy all files
 COPY . .
 
-# Install Python packages
+# Install Python dependencies
 RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Set environment variable for TensorFlow CPU
-ENV TF_CPP_MIN_LOG_LEVEL=2
+# Set environment variable for Dash
+ENV PORT=8080
 
-# Expose port (Dash default)
-EXPOSE 8050
+# Expose the port Dash uses
+EXPOSE 8080
 
-# Run the Dash app
-CMD ["python", "dicom_dash_app.py"]
+# Run the app
+CMD ["gunicorn", "dicom_dash_app:app", "--bind", "0.0.0.0:8080"]
