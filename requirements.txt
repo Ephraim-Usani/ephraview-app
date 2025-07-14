@@ -1,11 +1,12 @@
+gunicorn
+opencv-python
 dash
 dash-bootstrap-components
 Flask
-pydicom
 tensorflow==2.16.1
-opencv-python
-numpy
+pydicom
 plotly
-pillow
+numpy
 scikit-learn
+pillow
 joblib
