@@ -1,10 +1,5 @@
 services:
   - type: web
     name: ephraview-app
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn dicom_dash_app:app
+    env: docker
     plan: free
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.10.13
