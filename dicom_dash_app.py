@@ -35,14 +35,25 @@ heart_model = None
 def get_lung_model():
     global lung_model
     if lung_model is None:
-        lung_model = load_model(LUNGS_MODEL_PATH, custom_objects={'dice_loss': dice_loss})
+        try:
+            print("Loading lung model...")
+            lung_model = load_model(LUNGS_MODEL_PATH, custom_objects={'dice_loss': dice_loss})
+            print("Lung model loaded successfully.")
+        except Exception as e:
+            print("Failed to load lung model:", e)
     return lung_model
 
 def get_heart_model():
     global heart_model
     if heart_model is None:
-        heart_model = load_model(HEART_MODEL_PATH, custom_objects={'dice_loss': dice_loss})
+        try:
+            print("Loading heart model...")
+            heart_model = load_model(HEART_MODEL_PATH, custom_objects={'dice_loss': dice_loss})
+            print("Heart model loaded successfully.")
+        except Exception as e:
+            print("Failed to load heart model:", e)
     return heart_model
+
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
