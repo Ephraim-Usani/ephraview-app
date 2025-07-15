@@ -12,7 +12,6 @@ from tensorflow.image import resize
 import tensorflow.keras.backend as K
 import cv2
 import os
-
 from keras.saving import register_keras_serializable
 
 @register_keras_serializable()
@@ -28,6 +27,7 @@ def dice_loss(y_true, y_pred):
 MODEL_DIR = "models"
 LUNGS_MODEL_PATH = os.path.join(MODEL_DIR, "CTR_UNet_Luuuungs_precision.keras")
 HEART_MODEL_PATH = os.path.join(MODEL_DIR, "CTR_UNet_FineTuned.keras")
+
 # Lazy load models
 lung_model = None
 heart_model = None
@@ -54,14 +54,12 @@ def get_heart_model():
             print("Failed to load heart model:", e)
     return heart_model
 
-
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 image_state = {
     "array": None,
     "pixel_spacing": [1, 1]
 }
-
 measurement_list = []
 
 app.layout = html.Div([
@@ -76,7 +74,12 @@ app.layout = html.Div([
             children=html.Img(src="/assets/Add_DICOM_File.png", style={"height": "60px"}),
             style={"cursor": "pointer"}
         ),
-        html.Img(src="/assets/Run_AI_CTR.png", id="run-ctr-img", style={"height": "60px", "cursor": "pointer"})
+        html.Button(
+            html.Img(src="/assets/Run_AI_CTR.png", style={"height": "60px"}),
+            id="run-ctr-img",
+            n_clicks=0,
+            style={"border": "none", "background": "none", "cursor": "pointer"}
+        )
     ], style={
         "backgroundColor": "white",
         "height": "70px",
@@ -161,12 +164,12 @@ def update_image(contents):
     prevent_initial_call=True
 )
 def compute_ctr(n_clicks):
+    print("CTR computation triggered")  # Debug print
     img = image_state["array"]
     if img is None:
         return "No image uploaded.", dash.no_update
 
     spacing_x, spacing_y = float(image_state["pixel_spacing"][1]), float(image_state["pixel_spacing"][0])
-
     original_shape = img.shape
     img_resized = resize(img[..., np.newaxis], (256, 256)).numpy()
     img_resized = np.expand_dims(img_resized, axis=0)
@@ -205,23 +208,20 @@ def compute_ctr(n_clicks):
     heart_fig.data[0].opacity = 0.3
     fig.add_trace(heart_fig.data[0])
 
-    # Bounding boxes
     fig.add_shape(type="rect", x0=lung_xmin, y0=lung_ymin, x1=lung_xmax, y1=lung_ymax,
                   line=dict(color="blue", width=2))
     fig.add_shape(type="rect", x0=heart_xmin, y0=heart_ymin, x1=heart_xmax, y1=heart_ymax,
                   line=dict(color="red", width=2))
 
-    # Lung width line + annotation
     fig.add_shape(type="line", x0=lung_xmin, y0=lung_ymax + 5, x1=lung_xmax, y1=lung_ymax + 5,
                   line=dict(color="blue", width=2))
-    fig.add_annotation(x=(lung_xmin + lung_xmax) / 2, y=lung_ymax + 25,  # moved down further
+    fig.add_annotation(x=(lung_xmin + lung_xmax) / 2, y=lung_ymax + 25,
                        text=f"Lung width: {lung_width_mm:.2f} mm", showarrow=False,
                        font=dict(color="blue"))
 
-    # Heart width line + annotation
     fig.add_shape(type="line", x0=heart_xmin, y0=heart_ymax + 5, x1=heart_xmax, y1=heart_ymax + 5,
                   line=dict(color="red", width=2))
-    fig.add_annotation(x=(heart_xmin + heart_xmax) / 2, y=heart_ymax + 25,  # moved down further
+    fig.add_annotation(x=(heart_xmin + heart_xmax) / 2, y=heart_ymax + 25,
                        text=f"Heart width: {heart_width_mm:.2f} mm", showarrow=False,
                        font=dict(color="red"))
 
@@ -255,6 +255,7 @@ def measure_distance(relayoutData):
         measurement_list.append(f"{dist:.2f} mm")
 
     return " | ".join(measurement_list)
-server = app.server  # Expose for Gunicorn
+
+server = app.server
 if __name__ == '__main__':
     app.run(debug=False)
