@@ -164,55 +164,85 @@ def update_image(contents):
     prevent_initial_call=True
 )
 def compute_ctr(n_clicks):
-    print("CTR computation triggered")  # Debug print
+    print("🔵 CTR computation triggered")
+    
     img = image_state["array"]
     if img is None:
+        print("⚠️ No image array found.")
         return "No image uploaded.", dash.no_update
 
     spacing_x, spacing_y = float(image_state["pixel_spacing"][1]), float(image_state["pixel_spacing"][0])
+    print(f"Image shape: {img.shape}, Pixel spacing: x={spacing_x}, y={spacing_y}")
+
+    # Preprocess image
     original_shape = img.shape
     img_resized = resize(img[..., np.newaxis], (256, 256)).numpy()
     img_resized = np.expand_dims(img_resized, axis=0)
     img_3ch = np.tile(img_resized, [1, 1, 1, 3])
 
-    lung_mask_small = get_lung_model().predict(img_3ch)[0, ..., 0]
-    heart_mask_small = get_heart_model().predict(img_resized)[0, ..., 0]
+    print("🔄 Predicting lung mask...")
+    try:
+        lung_model = get_lung_model()
+        lung_mask_small = lung_model.predict(img_3ch)[0, ..., 0]
+    except Exception as e:
+        print("❌ Lung model prediction failed:", e)
+        return "Failed to compute lung mask.", dash.no_update
 
+    print("🔄 Predicting heart mask...")
+    try:
+        heart_model = get_heart_model()
+        heart_mask_small = heart_model.predict(img_resized)[0, ..., 0]
+    except Exception as e:
+        print("❌ Heart model prediction failed:", e)
+        return "Failed to compute heart mask.", dash.no_update
+
+    # Resize predictions back to original shape
     lung_mask = resize(lung_mask_small[..., np.newaxis], original_shape).numpy()[..., 0]
     heart_mask = resize(heart_mask_small[..., np.newaxis], original_shape).numpy()[..., 0]
 
+    # Get bounding boxes
     lung_bbox = get_refined_bounding_box(lung_mask)
     heart_bbox = get_refined_bounding_box(heart_mask)
 
-    if not lung_bbox or not heart_bbox:
-        return "No valid lung/heart mask detected.", dash.no_update
+    if not lung_bbox:
+        print("❌ No lung bounding box detected.")
+        return "No valid lung region detected.", dash.no_update
+    if not heart_bbox:
+        print("❌ No heart bounding box detected.")
+        return "No valid heart region detected.", dash.no_update
 
     lung_xmin, lung_ymin, lung_xmax, lung_ymax = lung_bbox
     heart_xmin, heart_ymin, heart_xmax, heart_ymax = heart_bbox
 
+    # Widths in pixels and mm
     lung_width_px = lung_xmax - lung_xmin
     heart_width_px = heart_xmax - heart_xmin
-
     lung_width_mm = lung_width_px * spacing_x
     heart_width_mm = heart_width_px * spacing_x
-
     ctr = heart_width_mm / lung_width_mm if lung_width_mm != 0 else 0
 
+    print(f"✅ CTR calculation completed: CTR = {ctr:.2f}")
+
+    # Create output image
     fig = px.imshow(img, color_continuous_scale="gray")
 
+    # Overlay lung mask
     lung_fig = px.imshow(lung_mask, color_continuous_scale="Blues")
     lung_fig.data[0].opacity = 0.3
     fig.add_trace(lung_fig.data[0])
 
+    # Overlay heart mask
     heart_fig = px.imshow(heart_mask, color_continuous_scale="Reds")
     heart_fig.data[0].opacity = 0.3
     fig.add_trace(heart_fig.data[0])
 
+    # Add bounding boxes
     fig.add_shape(type="rect", x0=lung_xmin, y0=lung_ymin, x1=lung_xmax, y1=lung_ymax,
                   line=dict(color="blue", width=2))
     fig.add_shape(type="rect", x0=heart_xmin, y0=heart_ymin, x1=heart_xmax, y1=heart_ymax,
                   line=dict(color="red", width=2))
 
+    # Add width lines and annotations
     fig.add_shape(type="line", x0=lung_xmin, y0=lung_ymax + 5, x1=lung_xmax, y1=lung_ymax + 5,
                   line=dict(color="blue", width=2))
     fig.add_annotation(x=(lung_xmin + lung_xmax) / 2, y=lung_ymax + 25,
